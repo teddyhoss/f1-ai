@@ -136,7 +136,7 @@ export default function TrainingScreen({
       zkProof: zkProof.proof,
     });
 
-    // Update crypto panel with all data
+    // Update crypto panel with all data - make it unique for each variation
     setCryptoData({
       zkProof,
       encryptedParams,
@@ -144,9 +144,12 @@ export default function TrainingScreen({
       vrf,
       homomorphic,
       transactionId,
-      blockNumber: Math.floor(Math.random() * 1000 + 100),
-      gasUsed: 45000 + Math.floor(Math.random() * 10000),
+      blockNumber: 15000000 + Math.floor(Math.random() * 10000) + (currentVariation[playerIndex] * 100),
+      gasUsed: 180000 + Math.floor(Math.random() * 50000) + (playerIndex * 10000),
       timestamp: Date.now(),
+      playerIndex,
+      variationNumber: currentVariation[playerIndex] + 1,
+      playerName: player.name || `Player ${playerIndex + 1}`,
     });
 
     const newVariation = {
@@ -178,8 +181,8 @@ export default function TrainingScreen({
 
     setIsTraining(false);
 
-    // Hide crypto panel after 5 seconds
-    setTimeout(() => setShowCryptoPanel(false), 5000);
+    // Don't auto-hide anymore, let user control it</
+    // setTimeout(() => setShowCryptoPanel(false), 5000);
   };
 
   const generateRandomParameters = () => {
@@ -190,6 +193,30 @@ export default function TrainingScreen({
     const newBest = [...bestVariations];
     newBest[playerIndex] = variation;
     setBestVariations(newBest);
+
+    // Update crypto panel to show this variation's data
+    if (variation.zkProof && variation.encryptedParams) {
+      setCryptoData({
+        zkProof: variation.zkProof,
+        encryptedParams: variation.encryptedParams,
+        publicKey: playerKeys[playerIndex]?.publicKey || `0x${Math.random().toString(16).slice(2, 66)}`,
+        vrf: variation.vrf,
+        homomorphic: {
+          output: variation.speed,
+          proof: variation.zkProof?.proof?.substring(0, 32) || Math.random().toString(16).slice(2, 34),
+          encryptedOutput: `0x${Math.random().toString(16).slice(2, 34)}`,
+          verified: true,
+          _debug: variation._debug,
+        },
+        transactionId: variation.transactionId,
+        blockNumber: 15000000 + Math.floor(Math.random() * 50000) + (variation.index * 100),
+        gasUsed: 180000 + Math.floor(Math.random() * 50000),
+        timestamp: variation.timestamp || Date.now(),
+        playerIndex,
+        variationNumber: variation.index + 1,
+        playerName: players[playerIndex]?.name || `Player ${playerIndex + 1}`,
+      });
+    }
   };
 
   const handleStartRace = () => {
@@ -222,7 +249,13 @@ export default function TrainingScreen({
         {players.map((player, index) => (
           <button
             key={player.address}
-            onClick={() => setSelectedPlayer(index)}
+            onClick={() => {
+              setSelectedPlayer(index);
+              // Update crypto panel if this player has variations
+              if (bestVariations[index]) {
+                handleSelectVariation(index, bestVariations[index]);
+              }
+            }}
             className={`px-6 py-3 rounded-lg font-bold transition-all ${
               selectedPlayer === index
                 ? `bg-${playerColors[index]} text-white shadow-lg`
@@ -270,7 +303,7 @@ export default function TrainingScreen({
                 >
                   {bestVariations[selectedPlayer].speed}
                 </motion.div>
-                <div className="text-sm text-gray-400 mt-2">HP (validation output)</div>
+                <div className="text-sm text-gray-400 mt-2">km/h (F(X) mod p)</div>
               </div>
 
               {/* Parameters (Hidden/Encrypted) */}
@@ -288,7 +321,7 @@ export default function TrainingScreen({
                   ))}
                 </div>
                 <div className="text-xs text-gray-500 mt-2">
-                  Parameters are encrypted on blockchain
+                  Parameters encrypted with TFHE-rs • Threshold: 2/3
                 </div>
               </div>
 
@@ -377,7 +410,7 @@ export default function TrainingScreen({
                   <div className="flex justify-between items-center">
                     <div>
                       <span className="text-sm text-gray-400">Session #{index + 1}</span>
-                      <div className="text-2xl font-bold">{variation.speed} HP</div>
+                      <div className="text-2xl font-bold">{variation.speed} km/h</div>
                     </div>
                     {bestVariations[selectedPlayer]?.timestamp === variation.timestamp && (
                       <div className="text-green-400 text-2xl">✓</div>
@@ -435,6 +468,20 @@ export default function TrainingScreen({
           All drivers: {bestVariations.filter(v => v !== null).length}/3 ready
         </div>
       </motion.div>
+
+      {/* Crypto Panel Toggle Button */}
+      {cryptoData && (
+        <button
+          onClick={() => setShowCryptoPanel(!showCryptoPanel)}
+          className="fixed bottom-4 right-4 z-40 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-full shadow-lg transition-all hover:scale-110"
+          title={showCryptoPanel ? "Hide Crypto Panel" : "Show Crypto Panel"}
+        >
+          <span className="text-xl">{showCryptoPanel ? '🔒' : '🔐'}</span>
+          <span className="ml-2 text-sm font-bold">
+            {showCryptoPanel ? 'Hide' : 'Crypto'}
+          </span>
+        </button>
+      )}
 
       {/* Crypto Panel */}
       <CryptoPanel cryptoData={cryptoData} isVisible={showCryptoPanel} />

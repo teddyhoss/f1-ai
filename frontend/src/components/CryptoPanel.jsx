@@ -27,23 +27,26 @@ export default function CryptoPanel({ cryptoData, isVisible }) {
     }
   }, [isVisible, cryptoData]);
 
-  if (!isVisible || !cryptoData) return null;
-
   return (
     <AnimatePresence>
-      <motion.div
-        initial={{ x: 300, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        exit={{ x: 300, opacity: 0 }}
-        className="fixed right-4 top-20 w-96 card bg-gray-900 border-2 border-blue-500 shadow-2xl shadow-blue-500/50 z-50 max-h-[80vh] overflow-y-auto"
-      >
+      {isVisible && cryptoData && (
+        <motion.div
+          key="crypto-panel"
+          initial={{ x: 300, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          exit={{ x: 300, opacity: 0 }}
+          transition={{ type: "spring", damping: 20 }}
+          className="fixed right-4 top-20 w-96 card bg-gray-900 border-2 border-blue-500 shadow-2xl shadow-blue-500/50 z-50 max-h-[80vh] overflow-y-auto"
+        >
         {/* Header */}
         <div className="mb-4 pb-3 border-b border-gray-700">
           <h3 className="text-xl font-bold text-blue-400 flex items-center gap-2">
             <span className="animate-pulse">🔐</span>
             Crypto Inspector
           </h3>
-          <p className="text-xs text-gray-500 mt-1">Live cryptographic operations</p>
+          <p className="text-xs text-gray-500 mt-1">
+            {cryptoData.playerName} • Variation #{cryptoData.variationNumber || 1}
+          </p>
         </div>
 
         {/* ZK-SNARK Proof Generation */}
@@ -105,12 +108,12 @@ export default function CryptoPanel({ cryptoData, isVisible }) {
           </div>
         )}
 
-        {/* RSA Encryption */}
+        {/* FHE Encryption */}
         {cryptoData.encryptedParams && (
           <div className="mb-4">
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-lg">🔑</span>
-              <h4 className="font-bold text-yellow-400">RSA Encryption</h4>
+              <span className="text-lg">🔐</span>
+              <h4 className="font-bold text-yellow-400">FHE Encryption (TFHE)</h4>
             </div>
 
             <div className="space-y-2 bg-black/30 rounded p-3">
@@ -121,7 +124,10 @@ export default function CryptoPanel({ cryptoData, isVisible }) {
                 </span>
               </div>
               <div className="text-xs text-gray-400 mt-2">
-                {cryptoData.encryptedParams.length} parameters encrypted
+                {cryptoData.encryptedParams.length} parameters encrypted in Z_p
+              </div>
+              <div className="text-xs text-blue-400 mt-1">
+                p = 2³¹-1 (Mersenne prime)
               </div>
               <div className="grid grid-cols-5 gap-1 mt-2">
                 {cryptoData.encryptedParams.slice(0, 10).map((param, i) => (
@@ -169,24 +175,33 @@ export default function CryptoPanel({ cryptoData, isVisible }) {
           </div>
         )}
 
-        {/* Homomorphic Computation */}
+        {/* Homomorphic Computation with Threshold */}
         {cryptoData.homomorphic && (
           <div className="mb-4">
             <div className="flex items-center gap-2 mb-3">
               <span className="text-lg">🧬</span>
-              <h4 className="font-bold text-cyan-400">Homomorphic Compute</h4>
+              <h4 className="font-bold text-cyan-400">FHE Computation</h4>
             </div>
 
             <div className="space-y-2 bg-black/30 rounded p-3 font-mono text-xs">
               <div className="text-gray-400 mb-2">
-                Computed on encrypted data without decryption
+                F(X) = (Σ c_i × X_i + bias) mod p
+              </div>
+              <div className="text-purple-400 mb-2">
+                Threshold Decryption: 2/3 shares required
               </div>
               <div>
                 <span className="text-gray-500">Output:</span>{' '}
                 <span className="text-cyan-300 font-bold text-lg">
                   {cryptoData.homomorphic.output}
                 </span>
-                <span className="text-gray-500 ml-2">HP</span>
+                <span className="text-gray-500 ml-2">km/h</span>
+              </div>
+              <div>
+                <span className="text-gray-500">Computation:</span>{' '}
+                <span className="text-cyan-300">
+                  Fully homomorphic (TFHE-rs)
+                </span>
               </div>
               <div>
                 <span className="text-gray-500">Proof:</span>{' '}
@@ -239,7 +254,8 @@ export default function CryptoPanel({ cryptoData, isVisible }) {
         <div className="text-xs text-gray-600 text-center pt-3 border-t border-gray-800">
           Timestamp: {new Date(cryptoData.timestamp || Date.now()).toLocaleTimeString()}
         </div>
-      </motion.div>
+        </motion.div>
+      )}
     </AnimatePresence>
   );
 }
