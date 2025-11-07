@@ -47,12 +47,11 @@ Chiunque deve poter verificare che il vincitore ha giocato legalmente
 La casualità della generazione deve essere dimostrabile
 Tutte le operazioni devono essere tracciabili on-chain
 La correttezza dei calcoli deve essere provabile matematicamente
-Zero-Trust:
-
 Nessuna fiducia in hardware specifico
 Nessuna fiducia in server centralizzati
 Nessuna fiducia in persone o organizzazioni
 Solo fiducia nella matematica e nella blockchain
+
 1.3 Sfide TecnicheSfida 1: Generazione Cieca
 Come generare numeri casuali che:
 
