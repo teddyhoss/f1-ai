@@ -1,0 +1,26 @@
+# FastAPI and server
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+websockets==12.0
+
+# Cryptography
+pycryptodome==3.19.0
+cryptography==41.0.7
+pynacl==1.5.0
+
+# Database and storage
+sqlalchemy==2.0.23
+aiosqlite==0.19.0
+
+# Utils
+pydantic==2.5.0
+python-dotenv==1.0.0
+python-dateutil==2.8.2
+
+# Development
+pytest==7.4.3
+pytest-asyncio==0.21.1
+httpx==0.25.2
+
+requests

@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+:root {
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  color: white;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.card {
+  background-color: rgb(31 41 55);
+  border-radius: 0.5rem;
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+  padding: 1.5rem;
+  border: 1px solid rgb(55 65 81);
+}
+
+.btn-primary {
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 700;
+  color: white;
+  transition: all 0.3s;
+  transform: scale(1);
+}
+
+.btn-primary:hover {
+  transform: scale(1.05);
+}
+
+.btn-primary:active {
+  transform: scale(0.95);
+}
+
+.btn-ferrari {
+  background-color: #DC0000;
+  box-shadow: 0 10px 15px -3px rgba(220, 0, 0, 0.5);
+}
+
+.btn-ferrari:hover {
+  background-color: #8B0000;
+}
+
+.btn-mercedes {
+  background-color: #00D2BE;
+  box-shadow: 0 10px 15px -3px rgba(0, 210, 190, 0.5);
+}
+
+.btn-mercedes:hover {
+  background-color: #008C7A;
+}
+
+.btn-redbull {
+  background-color: #0600EF;
+  box-shadow: 0 10px 15px -3px rgba(6, 0, 239, 0.5);
+}
+
+.btn-redbull:hover {
+  background-color: #04009E;
+}
