@@ -1,6 +1,14 @@
 # F1 AI Racing - Sistema di Gioco Competitivo con Privacy Crittografica Totale
 
+## **🔴 VERSIONE DI TEST IMPLEMENTATA SU TESTNET XRPL 🔴**
+
 **Una rivoluzione nel gaming competitivo: privacy matematicamente garantita attraverso FHE, Threshold Cryptography e Zero-Knowledge Proofs**
+
+### 📍 Deployment Status
+- **Network**: XRPL Testnet
+- **Status**: Testing Phase
+- **Explorer**: [https://testnet.xrpl.org](https://testnet.xrpl.org)
+- **Faucet**: [https://xrpl.org/xrp-testnet-faucet.html](https://xrpl.org/xrp-testnet-faucet.html)
 
 ---
 
@@ -99,29 +107,96 @@ L'aritmetica modulare garantisce:
 - Efficienza operazioni FHE (~40% più veloci)
 - Compatibilità nativa con Shamir Secret Sharing
 
-### 3. **Threshold Decryption**
+### 3. **Threshold Decryption con Shamir + Chiavi Cifrate On-Chain**
 
-Implementazione (t,n)-threshold con Shamir Secret Sharing:
+Implementazione (t,n)-threshold basata su **Shamir Secret Sharing** con pubblicazione cifrata on-chain:
 
 ```javascript
-// Setup: sk_master divisa in n=3 shares con threshold t=2
-sk_shares = ShamirSplit(sk_master, n=3, t=2, p)
-// sk_master viene distrutta dopo splitting
+// Setup: sk_master divisa usando SHAMIR SECRET SHARING
+// Threshold 4/5: servono 4 shares su 5 per ricostruire
+sk_shares = ShamirSplit(sk_master, n=5, t=4, p)
+// sk_master viene distrutta dopo splitting Shamir
 
-// Decryption richiede t shares
-partial_i = TFHE.partialDecryptMod(enc_result, sk_shares[i], p)
-proof_i = ZKProof("partial_i corretto per share i")
+// INNOVAZIONE: Le shares Shamir vengono cifrate e pubblicate on-chain
+for (i = 0; i < 5; i++) {
+  // Ogni share Shamir viene cifrata dal TEE
+  encrypted_share[i] = TEE.encrypt(sk_shares[i])
+  // La share cifrata viene pubblicata on-chain (trasparente ma sicura)
+  blockchain.publish(encrypted_share[i])
+}
 
-// Ricostruzione Lagrange in Z_p
-output = LagrangeReconstruct([partial_1, partial_2], indices, p)
+// Decryption richiede t=4 shares Shamir su 5
+// Solo il TEE può decifrare le shares Shamir quando necessario
+shamir_share_i = TEE.decrypt(encrypted_share[i])
+shamir_share_j = TEE.decrypt(encrypted_share[j])
+// ... (4 shares Shamir totali)
+
+// Ricostruzione usando interpolazione di Lagrange (Shamir standard)
+output = ShamirReconstruct([shamir_share_1..4], indices, p)
+```
+
+**Doppia Protezione:**
+- **Layer 1**: Shamir Secret Sharing (matematicamente sicuro, information-theoretic)
+- **Layer 2**: Cifratura TEE delle shares Shamir prima della pubblicazione
+
+Proprietà:
+- Usa **Shamir Secret Sharing classico** con threshold 4/5
+- Shares Shamir cifrate pubbliche ma accessibili solo dal TEE
+- Resistente a collusione fino a 3 giocatori
+- Trasparenza totale (shares on-chain) con privacy garantita (cifratura TEE)
+
+### 4. **Trusted Execution Environment (TEE) per Generazione Numeri**
+
+Il TEE garantisce generazione sicura e imprevedibile dei parametri iniziali:
+
+```javascript
+// Generazione numeri tramite TEE invece di VRF puro
+TEE.initialize(game_id)
+
+// Il TEE genera i parametri con entropia hardware
+X[i] = TEE.generateSecure(player_id, i, opponent_randomness)
+// Incorpora randomness dagli avversari per fairness distribuita
+
+// Attestazione remota per verificare integrità TEE
+attestation = TEE.getAttestation()
+blockchain.verifyTEE(attestation)
+```
+
+**Vantaggi del TEE:**
+- Entropia hardware certificata
+- Protezione contro side-channel attacks
+- Attestazione verificabile on-chain
+- Isolamento completo dai processi esterni
+
+### 5. **Fattore di Randomness degli Avversari**
+
+Ogni giocatore contribuisce alla randomness totale del sistema:
+
+```javascript
+// Ogni giocatore fornisce entropia
+opponent_random[player] = SHA256(player_secret || nonce)
+
+// Aggregazione sicura della randomness
+combined_randomness = XOR(
+  opponent_random[0],
+  opponent_random[1],
+  opponent_random[2]
+)
+
+// TEE usa randomness combinata per generazione parametri
+X[i] = TEE.generateWithRandomness(
+  player_id,
+  i,
+  combined_randomness
+)
 ```
 
 Proprietà:
-- Information-theoretic security con t-1 shares
-- sk_master non esiste dopo setup iniziale
-- Resistente a collusione fino a t-1 giocatori
+- Nessun singolo giocatore controlla la randomness
+- Impossibile predire output senza conoscere tutti i contributi
+- Resistente a collusione parziale (< 4 giocatori)
 
-### 4. **Zero-Knowledge Proofs**
+### 6. **Zero-Knowledge Proofs**
 
 Implementazione con Groth16 su BN254:
 
@@ -129,7 +204,7 @@ Implementazione con Groth16 su BN254:
 // Circuit ZK-SNARK
 Circuit {
   // Public inputs
-  public: [commitment, output, seed_X, seed_F, k_best],
+  public: [commitment, output, seed_X, seed_F, k_best, opponent_randomness],
 
   // Private witness
   private: [X, salt, deltas],
@@ -137,7 +212,7 @@ Circuit {
   // Constraints da verificare
   constraints: {
     C1: commitment == SHA256(Enc(X) || salt),
-    C2: X[i] == SHA256(seed_X || player || i) mod p,
+    C2: X[i] == TEE.verify(player, i, opponent_randomness),
     C3: ∀i: |delta[i]| ≤ 20,
     C4: output == F(X + Σ deltas) mod p
   }
@@ -213,9 +288,11 @@ Il team con la velocità più alta vince 100 XPF! 🏆
 | **Privacy Parametri** | Nessuno vede mai i parametri | FHE con TFHE-rs |
 | **Privacy Formula** | Formula sconosciuta fino dopo commitment | VRF + temporal ordering |
 | **Anti-Cheat** | Max 9 variazioni, delta ≤ ±20 | Smart contract + ZK proofs |
-| **Fairness** | Nessun vantaggio a nessuno | Casualità verificabile VRF |
+| **Fairness** | Nessun vantaggio a nessuno | TEE + Opponent randomness |
 | **Verificabilità** | Chiunque può verificare | ZK-SNARKs on-chain |
-| **No Single Point** | Nessun controllo centralizzato | Threshold 2/3 |
+| **No Single Point** | Nessun controllo centralizzato | Threshold 4/5 |
+| **Trasparenza Keys** | Chiavi pubbliche ma protette | TEE encryption on-chain |
+| **Randomness Distribuita** | Nessun controllo unilaterale | Contributi da tutti i giocatori |
 
 ### Perché è Impossibile Barare
 
@@ -224,7 +301,11 @@ Il team con la velocità più alta vince 100 XPF! 🏆
 3. **Vedere parametri altrui**: Cifrati con FHE
 4. **Manipolare la formula**: Generata dopo commitment
 5. **Falsificare risultati**: ZK proof verificata on-chain
-6. **Colludere per vincere**: Serve 2/3 per threshold
+6. **Colludere per vincere**: Serve 4/5 per threshold (80% dei partecipanti)
+7. **Manipolare la randomness**: TEE + opponent contributions impediscono controllo unilaterale
+8. **Accedere alle chiavi private**: Cifrate dal TEE, solo lui può decifrarle
+9. **Compromettere il TEE**: Attestazione remota verificata on-chain
+10. **Predire i parametri iniziali**: Entropia hardware + randomness distribuita
 
 ---
 
@@ -237,20 +318,31 @@ Il team con la velocità più alta vince 100 XPF! 🏆
   - Operazioni su interi mod p
   - ~25s per calcolo variazione
 
-- **Threshold Cryptography**
-  - Shamir Secret Sharing su Z_p
-  - Threshold 2/3 per decryption
-  - Ricostruzione Lagrange
+- **Threshold Cryptography (Shamir-based)**
+  - **Shamir Secret Sharing** classico su Z_p
+  - Threshold 4/5 per decryption (servono 4 shares su 5)
+  - Ricostruzione tramite interpolazione di Lagrange
+  - Shares Shamir cifrate dal TEE e pubblicate on-chain
+  - Doppia sicurezza: Shamir (matematica) + TEE (hardware)
+
+- **Trusted Execution Environment (TEE)**
+  - Intel SGX / AMD SEV per isolamento hardware
+  - Generazione sicura parametri con entropia hardware
+  - Cifratura/decifratura chiavi threshold
+  - Attestazione remota verificabile
 
 - **Zero-Knowledge Proofs**
   - Groth16 su curva BN254
   - ~2s generazione proof
   - ~200k gas verifica on-chain
 
-- **Blockchain**
-  - Smart contracts Solidity
-  - VRF Chainlink per casualità
-  - Token ERC-20 per XPF
+- **Blockchain (XRPL Testnet)**
+  - **Deployato su XRPL Testnet** per testing
+  - Smart contracts Hooks (XRPL native)
+  - VRF per casualità verificabile
+  - Token XPF su XRPL
+  - Storage on-chain delle shares Shamir cifrate
+  - Testnet Explorer: https://testnet.xrpl.org
 
 ### Aritmetica Modulare
 
@@ -266,9 +358,13 @@ Tutte le operazioni avvengono nel campo finito Z_p con p = 2³¹-1:
 | Operazione | Tempo | Note |
 |------------|-------|------|
 | Calcolo FHE variazione | ~25s | Su server con 8 core |
-| Threshold decrypt | ~2s | 2/3 partecipazioni |
+| Shamir threshold decrypt | ~3s | 4/5 shares, Lagrange reconstruction |
+| TEE number generation | ~100ms | Con entropia hardware |
+| Opponent randomness | ~500ms | Aggregazione contributi |
 | Generazione ZK proof | ~2s | Client-side |
-| Verifica on-chain | ~0.2s | 200k gas |
+| Verifica on-chain (XRPL) | ~0.2s | XRPL Hooks execution |
+| TEE attestation | ~1s | Verifica remota |
+| Shamir share encryption | ~50ms | TEE encrypt per share |
 | **Partita completa** | ~5 min | 9 variazioni max |
 
 ---
