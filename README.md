@@ -403,7 +403,7 @@ Questo avvierà:
 
 Per approfondimenti tecnici:
 
-- [Technical Depth Analysis.MD](docs/Solution.MD) - Implementazione dettagliata FHE + Threshold
-- [docs/Problem.md](docs/Problem.md) - Specifica formale del problema
-- [docs/API_EXAMPLES.md](docs/API_EXAMPLES.md) - Esempi API
+- [Technical Depth Analysis](docs/Solution.MD) - Implementazione dettagliata FHE + Threshold
+- [Problema](docs/Problem.md) - Specifica formale del problema
+- [API_EXAMPLES](docs/API_EXAMPLES.md) - Esempi API
 
