@@ -26,6 +26,9 @@ export default function TrainingScreen({
   const [selectedVariationForDetails, setSelectedVariationForDetails] = useState(null);
   const [showTechModal, setShowTechModal] = useState(false);
   const [factoryParams, setFactoryParams] = useState([null, null, null]); // Factory parameters
+  const [baseConfiguration, setBaseConfiguration] = useState([null, null, null]); // Selected base config per player
+  const [showConfigSelector, setShowConfigSelector] = useState(false);
+  const [configSelectorPlayer, setConfigSelectorPlayer] = useState(null);
 
   const players = gameData.players || [];
 
@@ -92,6 +95,20 @@ export default function TrainingScreen({
     }
   }, []);
 
+  // Open configuration selector
+  const openConfigSelector = (playerIndex) => {
+    setConfigSelectorPlayer(playerIndex);
+    setShowConfigSelector(true);
+  };
+
+  // Select base configuration for training
+  const selectBaseConfiguration = (config) => {
+    const newBaseConfigs = [...baseConfiguration];
+    newBaseConfigs[configSelectorPlayer] = config;
+    setBaseConfiguration(newBaseConfigs);
+    setShowConfigSelector(false);
+  };
+
   // Simulate AI training (variations)
   const handleTrain = async (playerIndex) => {
     if (currentVariation[playerIndex] >= 9) {
@@ -110,8 +127,23 @@ export default function TrainingScreen({
       return;
     }
 
-    // Step 1: Generate parameters
-    const parameters = generateRandomParameters();
+    // Step 1: Generate parameters based on selected base configuration
+    let baseParams;
+    const selectedBase = baseConfiguration[playerIndex];
+
+    if (selectedBase) {
+      // Use selected base configuration
+      baseParams = selectedBase.parameters;
+    } else {
+      // Use factory configuration as default
+      baseParams = factoryParams[playerIndex]?.parameters || FACTORY_PARAMETERS[playerIndex];
+    }
+
+    // Apply delta variations to base parameters
+    const parameters = baseParams.map(param => {
+      const delta = Math.floor(Math.random() * 41) - 20; // -20 to +20
+      return Math.max(100, Math.min(999, param + delta)); // Keep within bounds
+    });
     await new Promise(resolve => setTimeout(resolve, 500));
 
     // Step 2: Encrypt parameters
@@ -362,6 +394,38 @@ export default function TrainingScreen({
         >
           <h3 className="text-2xl font-bold mb-4">Training Sessions</h3>
 
+          {/* Base Configuration Selector */}
+          <div className="mb-4 p-3 bg-gray-900 rounded-lg">
+            <div className="text-sm text-gray-400 mb-2">Starting Configuration</div>
+            <button
+              onClick={() => openConfigSelector(selectedPlayer)}
+              className="w-full py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm transition-all flex items-center justify-between px-3"
+            >
+              <span className="flex items-center gap-2">
+                {baseConfiguration[selectedPlayer] ? (
+                  <>
+                    {baseConfiguration[selectedPlayer].isFactory ? (
+                      <span className="px-2 py-1 bg-blue-600 text-xs rounded">FACTORY</span>
+                    ) : (
+                      <span className="px-2 py-1 bg-green-600 text-xs rounded">
+                        Session #{baseConfiguration[selectedPlayer].index + 1}
+                      </span>
+                    )}
+                    <span className="font-bold">{baseConfiguration[selectedPlayer].speed} km/h</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="px-2 py-1 bg-blue-600 text-xs rounded">FACTORY</span>
+                    <span className="font-bold">
+                      {factoryParams[selectedPlayer]?.speed || 'Default'} km/h
+                    </span>
+                  </>
+                )}
+              </span>
+              <span className="text-gray-400">▼</span>
+            </button>
+          </div>
+
           {/* Train Button */}
           <button
             onClick={() => handleTrain(selectedPlayer)}
@@ -492,6 +556,114 @@ export default function TrainingScreen({
         onClose={() => setShowTechModal(false)}
         variation={selectedVariationForDetails}
       />
+
+      {/* Configuration Selector Modal */}
+      <AnimatePresence>
+        {showConfigSelector && configSelectorPlayer !== null && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-8"
+            onClick={() => setShowConfigSelector(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-gray-900 border-2 border-blue-500 rounded-2xl max-w-2xl w-full max-h-[70vh] overflow-hidden shadow-2xl"
+            >
+              <div className="p-6 border-b border-gray-800">
+                <h2 className="text-2xl font-bold text-blue-400">
+                  Select Starting Configuration
+                </h2>
+                <p className="text-sm text-gray-400 mt-2">
+                  Choose which configuration to use as the base for your next training variation
+                </p>
+              </div>
+
+              <div className="p-6 overflow-y-auto max-h-[50vh] space-y-3">
+                {/* Factory Configuration */}
+                {factoryParams[configSelectorPlayer] && (
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => selectBaseConfiguration(factoryParams[configSelectorPlayer])}
+                    className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
+                      baseConfiguration[configSelectorPlayer]?.isFactory
+                        ? 'border-blue-500 bg-blue-500/20'
+                        : 'border-gray-700 bg-gray-800 hover:border-gray-600'
+                    }`}
+                  >
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <span className="px-2 py-1 bg-blue-600 text-xs rounded">FACTORY</span>
+                        <div className="text-lg font-bold mt-2">
+                          {factoryParams[configSelectorPlayer].speed} km/h
+                        </div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          Original factory configuration
+                        </div>
+                      </div>
+                      {baseConfiguration[configSelectorPlayer]?.isFactory && (
+                        <div className="text-blue-400 text-2xl">✓</div>
+                      )}
+                    </div>
+                  </motion.button>
+                )}
+
+                {/* Training Variations */}
+                {variations[configSelectorPlayer].map((variation, index) => (
+                  <motion.button
+                    key={variation.timestamp}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => selectBaseConfiguration(variation)}
+                    className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
+                      baseConfiguration[configSelectorPlayer]?.timestamp === variation.timestamp
+                        ? 'border-green-500 bg-green-500/20'
+                        : 'border-gray-700 bg-gray-800 hover:border-gray-600'
+                    }`}
+                  >
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <span className="px-2 py-1 bg-green-600 text-xs rounded">
+                          Session #{index + 1}
+                        </span>
+                        <div className="text-lg font-bold mt-2">
+                          {variation.speed} km/h
+                        </div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          Training variation {index + 1} of {variations[configSelectorPlayer].length}
+                        </div>
+                      </div>
+                      {baseConfiguration[configSelectorPlayer]?.timestamp === variation.timestamp && (
+                        <div className="text-green-400 text-2xl">✓</div>
+                      )}
+                    </div>
+                  </motion.button>
+                ))}
+
+                {variations[configSelectorPlayer].length === 0 && !factoryParams[configSelectorPlayer] && (
+                  <div className="text-center py-8 text-gray-500">
+                    No configurations available yet
+                  </div>
+                )}
+              </div>
+
+              <div className="p-6 border-t border-gray-800">
+                <button
+                  onClick={() => setShowConfigSelector(false)}
+                  className="w-full py-3 bg-gray-800 hover:bg-gray-700 rounded-lg font-bold transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
